@@ -9,7 +9,7 @@ class Thermal:
 
     def __init__(self, device):
         self.ser = serial.Serial(port=device,
-                                 baudrate=115200,
+                                 baudrate=9600,
                                  bytesize=8,
                                  parity="N",
                                  stopbits=1,
@@ -57,7 +57,7 @@ class Thermal:
         self.ser.flush()
 
     def cutPaper(self):
-        self.ser.write([0x1D,0x56,0x00])
+        self.ser.write([0x1D, 0x56, 0x01, 0x00])
         self.ser.flush()
 
 	def cutPaper(self,n):
@@ -190,6 +190,39 @@ class Thermal:
             self.ser.write([0x1D,0x2F,0x03])
         else:
             self.ser.write([0x1D,0x2F,0x00])
+        self.ser.flush()
+
+    def printOldBitmap(self, im):
+        im = im.rotate(90)
+        w, h = im.size
+        if w > 320 and h > 320:  # Crop if image is larger
+            if w > h:
+                im = im.crop(((w - h) / 2, 0, h + (w - h) / 2, h))
+            elif h > w:
+                im = im.crop((0, (h - w) / 2, w, w + (h - w) / 2))
+            im = im.resize((320, 320))
+        elif w > 320 or h > 320:
+            im.thumbnail((320, 320), Image.ANTIALIAS)
+
+        im = im.convert(
+            '1')  # Returns a converted copy of this image (1-bit pixels, black and white, stored with one pixel per byte)
+        w, h = im.size
+
+        self.ser.write([0x1D, 0x76, 0x30, 0x00, int(floor((w / 8.0) % 256.0)), int(floor((w / 8.0) / 256.0)),
+                        int(floor(h % 256.0)), int(floor(h / 256.0))])      # See technical specs of TK-41 printer
+        self.ser.flush()
+        for j in range(int(ceil(w / 8.0)) * 8):
+            for i in range(0, int(ceil(h / 8.0)) * 8, 8):
+                data = 0
+                desp = 7
+                for p in range(8):
+                    try:
+                        if im.getpixel((j, p + i)) == 0:
+                            data |= 1 << desp
+                    except:
+                        data |= 0 << desp
+                    desp = desp - 1  # Due to first is MSB
+                self.ser.write([data])
         self.ser.flush()
 
     def printHD(self,im):
