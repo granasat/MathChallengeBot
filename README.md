@@ -1,3 +1,11 @@
+# Telegram Bot that receives a pic and print it using a FENIX IMVICO VL42 (Epson TK41)
+
+This project prints a ticket for the event "Quiero ser ingeniera", organized by University of Granada.
+
+Telegram Bot works with pyTelegramBotAPI
+
+Thermal printer FENIX IMVICO VL42 (Epson TK41) works with the [library developed by Pablo Garrido, ThermalLibrary](https://github.com/pablogs9/ThermalLibrary), with some modifications.
+
 # Thermal ESC/POS Ticket Printing Library
 
 The Thermal Library implements lots of commands according to the ESC/POS standard:
