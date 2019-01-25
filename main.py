@@ -16,6 +16,9 @@ t = Thermal("/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controlle
 # Create a queue that will print the tasks as soon as the enter in the queue
 eq = EventQueue()
 
+# Token from bot father on telegram
+# ejecutar /newbot
+#
 # USING ENV VARIABLES, PUT YOUR TOKEN HERE AS `API_TOKEN = "TOKEN"`
 API_TOKEN = os.environ['TELEBOT_TOKEN']
 
@@ -88,7 +91,9 @@ def printTicket(userImg, user):      #Pic, user data, and a bool that indicates 
     t.println("")
     t.println("")
     t.setMargin(10)     # 10 mm margin
+    t.set_print_density(10)
     t.println(normalize("Nombre: " + str(user.name)))
+    t.set_print_density(0)
     t.println(normalize("Apellidos: " + str(user.apellidos)))
     t.println(normalize("Curso: " + str(user.curso)))
     t.println(normalize("Centro: " + str(user.centro)))
@@ -123,6 +128,8 @@ def printTicket(userImg, user):      #Pic, user data, and a bool that indicates 
         t.printOldBitmap(im)
         t.resetAlign()
 
+    t.setMargin(10)      # 10 mm margin left
+    t.println("https://granasat.ugr.es")
     t.println("")
     t.println("")
     t.println("")

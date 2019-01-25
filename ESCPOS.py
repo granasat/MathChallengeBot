@@ -5,7 +5,7 @@ from math import floor
 from PIL import Image
 from PIL import ImageOps
 
-MAX_PIC_WIDTH = 320     # Dots/pixels per line Pag 8
+MAX_PIC_WIDTH = 448     # Dots/pixels per line Pag 8
 PRINTABLE = 56      # mm of printable area. Pag 8
 
 class Thermal:
@@ -25,6 +25,7 @@ class Thermal:
                                  )
         self.ser.write([0x1B,0x40])	#Reset printer
         self.ser.write([0x1B,0x52,0x07]) #Spain charset
+        self.ser.write([0x1D,0x45,0x20]) # Set speed 80mm/s
 
 
     def close(self):
@@ -70,6 +71,17 @@ class Thermal:
 
     def println(self,s):
         self.ser.write(s + "\n")
+        self.ser.flush()
+
+    def printsimple(self,s):
+        self.ser.write(s)
+        self.ser.flush()
+
+    def set_print_density(self, n):     # n from -10 to 10, default 0, Pag. 63
+        if n >= -10 or n<=10:
+            self.ser.write([0x1D, 0x28, 0x4B, 0x00, 0x01, n])
+        else:
+            self.ser.write([0x1D, 0x28, 0x4B, 0x00, 0x01, 0x00])
         self.ser.flush()
 
     def printnln(self,s):
@@ -119,11 +131,13 @@ class Thermal:
         self.ser.write([0x1D, 0x4C, int(floor((mm % 256.0) / 0.125)), int(floor((mm / 256.0) / 0.125))])
         self.ser.flush()
 
-    def smallFont(self,value):
-        if value == 1:
-            self.ser.write([0x1B,0x4D,0x01])
+
+
+    def setFont(self,value):        # 0 normal, 1 bigger Pag 61
+        if value == 0:
+            self.ser.write([0x1D,0x21,0x00])
         else:
-            self.ser.write([0x1B,0x4D,0x00])
+            self.ser.write([0x1D,0x21,0x02])
         self.ser.flush()
 
     def textOrientation(self,value):
@@ -376,23 +390,23 @@ class Thermal:
             k = k + 1
             self.printBitmap(imaux,1)
 
-    def printCompleteBitmapCustom(self,im):
+    def printCompleteBitmapCustom(self, im):
         ##TRANSFORMACION
         t = int(raw_input("Tamano de la foto en tiras de papel: "))
         w, h = im.size
         print "Original size: " + str(w) + " " + str(h)
-        print "Ratio: " +str(float(t*256)/w)
-        print "Calculated size: " + str(t*256) + " " + str(int(h*(float(t*256)/w)))
-        im = im.resize((t*256,int(h*(float(t*256)/w))),Image.ANTIALIAS)
+        print "Ratio: " + str(float(t * 448) / w)
+        print "Calculated size: " + str(t * 448) + " " + str(int(h * (float(t * 448) / w)))
+        im = im.resize((t * 448, int(h * (float(t * 448) / w))), Image.ANTIALIAS)
         w, h = im.size
         print "Actual size: " + str(w) + " " + str(h)
-        print "Actual paper size: " + str(w/256) + " tiras, " + str(h/256) + " cuadrados de alto"
+        print "Actual paper size: " + str(w / 448) + " tiras, " + str(h / 448) + " cuadrados de alto"
 
-        im = im.crop((0,0,int(floor(w/256.0))*256,h))
+        im = im.crop((0, 0, int(floor(w / 448.0)) * 448, h))
 
         w, h = im.size
-        wc = int(ceil(w/256.0))
-        hc = int(ceil(h/256.0))
+        wc = int(ceil(w / 448.0))
+        hc = int(ceil(h / 448.0))
         im = im.convert('1')
 
         inicio = raw_input("Tira por la que comenzar: ")
@@ -402,25 +416,27 @@ class Thermal:
             inicio = int(inicio)
 
         ##IMPRESION
-        self.cutPaper()
-        for i in range(inicio-1,wc):
+        # self.cutPaper()
+        self.println("")
+        for i in range(inicio - 1, wc):
             hAux = h
             self.textAling(1)
-            self.println("Tira " + str(i+1) + " de " + str(wc))
-            self.printLines(1)
-            self.textAling(0)
+            self.println("Tira " + str(i + 1) + " de " + str(wc))
+            self.println("")
+            self.println("")
+            self.println("")
             self.cutPaper()
             for j in range(hc):
-                if hAux > 256:
-                    #print "Imprimiendo " + str(j) + "/" + str(i)
-                    #print str(i*256) + "," + str(j*256) + " " + str(i*256+256) + "," + str(j*256+256)
-                    imaux = im.crop((i*256,j*256,i*256+256,j*256+256))
-                    hAux = hAux - 256
+                if hAux > 448:
+                    # print "Imprimiendo " + str(j) + "/" + str(i)
+                    # print str(i*256) + "," + str(j*256) + " " + str(i*256+256) + "," + str(j*256+256)
+                    imaux = im.crop((i * 448, j * 448, i * 448 + 448, j * 448 + 448))
+                    hAux = hAux - 448
                 else:
-                    #print "Imprimiendo " + str(j) + "/" + str(i)
-                    #print str(i*256) + "," + str(j*256) + " " + str(i*256+256) + "," + str(j*256+hAux)
-                    imaux = im.crop((i*256,j*256,i*256+256,j*256+hAux))
+                    # print "Imprimiendo " + str(j) + "/" + str(i)
+                    # print str(i*256) + "," + str(j*256) + " " + str(i*256+256) + "," + str(j*256+hAux)
+                    imaux = im.crop((i * 448, j * 448, i * 448 + 448, j * 448 + hAux))
                     hAux = 0
-                self.printBitmap(imaux,1)
+                self.printOldBitmap(imaux)
             self.printLines(4)
-            self.cutPaper()
+
