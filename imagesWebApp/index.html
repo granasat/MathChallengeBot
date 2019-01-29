@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>PON AQUI EL TITULO</title>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"> 
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+        <meta name="description" content="Automatic Image Montage with jQuery" />
+        <link rel="stylesheet" type="text/css" href="css/demo.css" />
+		<link rel="stylesheet" type="text/css" href="css/style.css" />
+		<link href='http://fonts.googleapis.com/css?family=PT+Sans+Narrow&v1' rel='stylesheet' type='text/css' />
+		<link href='http://fonts.googleapis.com/css?family=Monoton' rel='stylesheet' type='text/css' />
+    </head>
+    <body style="background:#000;">
+		<div class="container">
+			<div class="header">
+				<a href="#"><span>GRANASAT </span>BLABLABLA</a>
+				<span class="right_ab">
+					<a href="#" title="Behance Profile of Andrey Yakovlev & Lili Aleeva" target="_blank">LOLOLO</a>
+					<a  href="#" target="_blank" title="Images licensed under CC BY-NC 3.0">CC BY-NC 3.0</a>
+					<a  href="#"><strong>LALALALA</strong></a>
+				</span>
+			</div>
+			
+			<div class="am-container" id="am-container">
+			</div>
+		</div>
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+		<script type="text/javascript" src="js/jquery.montage.min.js"></script>
+		<script type="text/javascript">
+			var images = []
+			var init = () => {
+				var $container 	= $('#am-container'),
+					$imgs		= $container.find('img').hide(),
+					totalImgs	= $imgs.length,
+					cnt			= 0;
+				
+				$imgs.each(function(i) {
+					var $img	= $(this);
+					$('<img/>').load(function() {
+						++cnt;
+						if( cnt === totalImgs ) {
+							$imgs.show();
+							$container.montage({
+								minsize	: true,
+								margin 	: 2
+							});
+							
+							/* 
+							 * just for this demo:
+							 */
+							$('#overlay').fadeIn(500);
+							var imgarr	= new Array();
+							for( var i = 1; i <= 73; ++i ) {
+								imgarr.push( i );
+							}
+							
+						}
+					}).attr('src',$img.attr('src'));
+			})}
+
+			var load = () => {
+
+				var myHeaders = new Headers();
+				myHeaders.append('pragma', 'no-cache');
+				myHeaders.append('cache-control', 'no-cache');
+
+				var myInit = {
+				method: 'GET',
+				headers: myHeaders,
+				};
+
+				var myRequest = new Request('data');
+
+				fetch(myRequest, myInit)
+				.then(function(response) {
+					return response.text()
+				}).then(function (text) {
+					lines = text.split("\n")
+					lines.shift()
+					lines = lines.filter(e => e.length)
+					
+					newImages = lines.filter(e => !images.includes(e))
+
+					console.log(newImages)
+					
+					var len = images.length;
+
+					for( var i = 0, newimgs = ''; i < newImages.length; ++i ) {
+						newimgs	+= '<a href="#"><img src="images/' + newImages[i].split(',').pop() + '"/></a>';
+					}
+					
+					if (newimgs !== ''){
+						images = images.concat(lines)						
+
+					var $container 	= $('#am-container')
+					var $newimages = $( newimgs );
+					$newimages.imagesLoaded( function(){
+						$container.append( $newimages ).montage( 'add', $newimages )
+					});
+
+					}
+				});	
+			}
+			init()
+			setInterval(_ => {
+				load()
+				window.scrollTo(0,document.body.scrollHeight)
+				},1000)
+		</script>
+    </body>
+</html>

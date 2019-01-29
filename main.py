@@ -11,7 +11,10 @@ import csv
 import datetime
 
 # Set up the printer serial Port
-t = Thermal("/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0")
+try:
+    t = Thermal("/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0")
+except:
+    t = None
 
 # Create a queue that will print the tasks as soon as the enter in the queue
 eq = EventQueue()
@@ -42,9 +45,9 @@ class User:
         self.challenge = None # Bool that indicates if the user solve the challenge
 
 
-def add_data_csv(user):
-    print("Writing Data: " + user.name + " " + user.apellidos + " " + user.curso + " " + user.centro + " " + user.ciudad + " " + user.mail)
-    fields = [str(user.name), str(user.apellidos), str(user.curso), str(user.centro), str(user.ciudad), str(user.mail)]
+def add_data_csv(user,imgPath):
+    #print("Writing Data: " + user.name + " " + user.apellidos + " " + user.curso + " " + user.centro + " " + user.ciudad + " " + user.mail)
+    fields = [str(user.name), str(user.apellidos), str(user.curso), str(user.centro), str(user.ciudad), str(user.mail), str(imgPath)]
     with open('data.csv', 'a') as f:
         writer = csv.writer(f)
         writer.writerow(fields)
@@ -67,9 +70,9 @@ def normalize(s):
         s = s.replace(a, b).replace(a.upper(), b.upper())
     return s
 
-def printTicket(userImg, user):      #Pic, user data, and a bool that indicates if the user solved the challenge
+def printTicket(userImg, user, imgPath):      #Pic, user data, and a bool that indicates if the user solved the challenge
     # Añadimos la info de usuario al CSV
-    add_data_csv(user)
+    add_data_csv(user,imgPath)
 
     print("Imprimiendo foto")
 
@@ -271,10 +274,41 @@ def process_pic(message):
         output = os.path.join("photos/", str(message.message_id) + ".jpg")
         wget.download(url=url_pic_path, out=output)
 
-        eq.enqueue(printTicket, [Image.open(output), user])
+        eq.enqueue(printTicket, [Image.open(output), user, output])
 
 @bot.message_handler(func=lambda m: True)
 def echo_all(message):
     bot.reply_to(message, "Para utilizar el bot envia /start")
 
 bot.polling()
+
+
+#Web Server
+import os
+from flask import Flask, request, send_from_directory, send_file
+
+app = Flask(__name__)
+
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
+
+@app.route('/images/<filename>')
+def serve_images(filename):
+    return send_file("photos/" + filename)
+
+@app.route('/<path:filename>')  
+def serve_static(filename):  
+    return send_from_directory("imagesWebApp", filename)
+
+@app.route("/data")
+def data():
+    root_dir = os.path.dirname(os.getcwd())
+    return send_file("data.csv")
+
+@app.route("/")
+def hello():
+    return send_file("imagesWebApp/index.html")
+
+if __name__ == "__main__":
+    app.run()
+
