@@ -12,8 +12,11 @@ import datetime
 
 # Set up the printer serial Port
 try:
-    t = Thermal("/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0")
+    # = Thermal("/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0")  #LINUX
+    t = Thermal("/dev/ttyS8")  #WINDOWS
+    print "Printer open OK"
 except:
+    print "Printer error"
     t = None
 
 # Create a queue that will print the tasks as soon as the enter in the queue
@@ -43,6 +46,7 @@ class User:
         self.ciudad = None
         self.mail = None
         self.challenge = None # Bool that indicates if the user solve the challenge
+        self.question = None
 
 
 def add_data_csv(user,imgPath):
@@ -61,7 +65,7 @@ def normalize(s):
         ("í", "i"),
         ("ó", "o"),
         ("ú", "u"),
-        ("º", "o"),
+        ("º", "o"),	
         ("ñ", "\xA4"),
         ("Ñ", "\xA5"),
         ("¿", "\xA8")
@@ -79,18 +83,15 @@ def printTicket(userImg, user, imgPath):      #Pic, user data, and a bool that i
     t.println("")
     t.println("")
     t.println("")
+    print "Printing logo"
     im = Image.open("logo.jpg")
-    t.textAlignCenter(im.size[0])
     t.printOldBitmap(im)
-    t.resetAlign()
     t.println("")
     t.println("   \xA8Quiero ser ingeniera?")
     t.textAlignCenter(100)
     t.println(FECHA)
-    t.resetAlign()
-    t.textAlignCenter(userImg.size[0])
+    print "Printing user image"
     t.printOldBitmap(userImg)
-    t.resetAlign()
     t.println("")
     t.println("")
     t.setMargin(10)     # 10 mm margin
@@ -119,17 +120,13 @@ def printTicket(userImg, user, imgPath):      #Pic, user data, and a bool that i
 
     if user.challenge:
         t.println(normalize("Superaste el reto!"))
-        t.resetAlign()
         im = Image.open("good.jpg")
-        t.textAlignCenter(im.size[0])
         t.printOldBitmap(im)
-        t.resetAlign()
     else:
         t.println(normalize("No has superado el reto, pero siempre estará septiembre"))
         im = Image.open("bad.jpg")
         t.textAlignCenter(im.size[0])
         t.printOldBitmap(im)
-        t.resetAlign()
 
     t.setMargin(10)      # 10 mm margin left
     t.println("https://granasat.ugr.es")
@@ -140,9 +137,6 @@ def printTicket(userImg, user, imgPath):      #Pic, user data, and a bool that i
     t.println("Aerospace Group GranaSAT")
     t.textAlignCenter(50)
     t.println("Orbiting your mind")
-    t.resetAlign()
-    t.println(normalize("Thanks to Fran Acién and Pablo Garrid"))
-    t.resetAlign()
     t.println("")
     t.println("")
     t.println("")
@@ -218,6 +212,10 @@ def get_ciudad(message):
     except Exception as e:
         bot.reply_to(message, 'oooops')
 
+from questions import questions
+import copy 
+import random
+
 def get_mail(message):
     try:
         chat_id = message.chat.id
@@ -225,14 +223,21 @@ def get_mail(message):
         user = user_dict[chat_id]
         user.mail = mail
 
-        bot.send_message(chat_id, "¿Aceptarías un reto matemático?")
-        bot.send_message(chat_id, "Rosi es 3 años mayor que Lili\nToto tiene la mitad de años que Rosi\nLili tiene 11 años\n")
+        bot.send_message(chat_id, "¿Aceptarías un reto?")
+
+        user = user_dict[chat_id]
+        user.question =  random.choice(questions)
 
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-        markup.add('6', '7', '8', '12')
-        msg = bot.send_message(chat_id, '¿Cuál es la de edad de Toto?', reply_markup=markup)
+        shans = copy.copy(user.question["answers"])  
+        random.shuffle(shans)
+        for ans in shans:
+            markup.add(ans)
+
+        msg = bot.send_message(chat_id, user.question["question"], reply_markup=markup)
         bot.register_next_step_handler(msg, resolver_problema)
     except Exception as e:
+        print e
         bot.reply_to(message, 'oooops')
 
 def resolver_problema(message):
@@ -240,13 +245,14 @@ def resolver_problema(message):
         chat_id = message.chat.id
         respuesta = message.text.encode('utf-8')
         user = user_dict[chat_id]
-
-        if respuesta == '7':
+        print(respuesta)
+        print(user.question["answers"][0])
+        if respuesta == user.question["answers"][0]:
             user.challenge = True
             bot.reply_to(message, "Correcto")
         else:
             user.challenge = False
-            bot.reply_to(message, "Métete a letras")
+            bot.reply_to(message, "Has fallado! Vuelve a intentarlo.")
 
         msg = bot.send_message(chat_id, "Enviame una foto!")
         bot.register_next_step_handler(msg, process_pic)
@@ -259,7 +265,7 @@ def process_pic(message):
         msg = bot.reply_to(message, 'Enviame una foto!')
         bot.register_next_step_handler(msg, process_pic)
     else:
-        bot.reply_to(message, "Muchas graciass")
+        bot.reply_to(message, "Muchas gracias")
 
         chat_id = message.chat.id
         user = user_dict[chat_id]
@@ -272,24 +278,27 @@ def process_pic(message):
         url_pic_path = "https://api.telegram.org/file/bot" + API_TOKEN + "/" + file.file_path
         print(url_pic_path)
         output = os.path.join("photos/", str(message.message_id) + ".jpg")
+        imgpath = str(message.message_id) + ".jpg"
         wget.download(url=url_pic_path, out=output)
 
-        eq.enqueue(printTicket, [Image.open(output), user, output])
+        eq.enqueue(printTicket, [Image.open(output), user, imgpath])
 
 @bot.message_handler(func=lambda m: True)
 def echo_all(message):
     bot.reply_to(message, "Para utilizar el bot envia /start")
 
-bot.polling()
+
 
 
 #Web Server
 import os
+import threading
 from flask import Flask, request, send_from_directory, send_file
 
 app = Flask(__name__)
 
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+app.debug = False
 
 
 @app.route('/images/<filename>')
@@ -310,5 +319,20 @@ def hello():
     return send_file("imagesWebApp/index.html")
 
 if __name__ == "__main__":
-    app.run()
+    threading.Thread(target=app.run).start()
+    bot.polling()
 
+# import os
+# files = os.listdir("./photos")
+# for name in files:
+#     im = Image.open("photos/" + name)
+#     t.textAlignCenter(im.size[0])
+#     t.printOldBitmap(im)
+#     t.println("Aerospace Group GranaSAT")
+#     t.textAlignCenter(50)
+#     t.println("Orbiting your mind")
+#     t.println("")
+#     t.println("")
+#     t.println("")
+#     t.println("")
+#     t.cutPaper()

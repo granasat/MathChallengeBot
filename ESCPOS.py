@@ -114,10 +114,10 @@ class Thermal:
             objWidth = MAX_PIC_WIDTH
         printablepx = PRINTABLE * 8  # Pixels
         margin = floor((printablepx - objWidth) / 2)  # In pixels
-        print('+' + str(objWidth))
-        print('-' + str(margin))
-        print(str(int(floor(((margin / 8.0) % 256.0) / 0.125))) + '|' + str(
-            int(floor(((margin / 8.0) / 256.0) / 0.125))))
+        # print('+' + str(objWidth))
+        # print('-' + str(margin))
+        # print(str(int(floor(((margin / 8.0) % 256.0) / 0.125))) + '|' + str(
+        #     int(floor(((margin / 8.0) / 256.0) / 0.125))))
 
         self.ser.write(
             [0x1D, 0x4C, int(floor(((margin / 8.0) % 256.0) / 0.125)), int(floor(((margin / 8.0) / 256.0) / 0.125))])
@@ -237,23 +237,24 @@ class Thermal:
         im = ImageOps.mirror(im)
         im = im.rotate(90)
         w, h = im.size
-        if w > MAX_PIC_WIDTH and h > MAX_PIC_WIDTH:  # Crop if image is larger
+        print "Image size: " + str((w,h))
+
+        if w != h:
             if w > h:
-                im = im.crop(((w - h) / 2, 0, h + (w - h) / 2, h))
+                im = im.crop(((w - h) / 2, 0, h + ((w - h) / 2), h))
             elif h > w:
-                im = im.crop((0, (h - w) / 2, w, w + (h - w) / 2))
-            im = im.resize((MAX_PIC_WIDTH, MAX_PIC_WIDTH))
-        elif w > MAX_PIC_WIDTH or h > MAX_PIC_WIDTH:
-            im.thumbnail((MAX_PIC_WIDTH, MAX_PIC_WIDTH), Image.ANTIALIAS)
+                im = im.crop((0, (h - w) / 2, w, w + ((h - w) / 2)))
+        
+        if w > 400:
+            im = im.resize((400, 400))
 
-        im = im.convert(
-            '1')  # Returns a converted copy of this image (1-bit pixels, black and white, stored with one pixel per byte)
+        im = im.convert('1')  # Returns a converted copy of this image (1-bit pixels, black and white, stored with one pixel per byte)
         w, h = im.size
+        print "Converted image size: " + str((w,h))
+        self.resetAlign()
 
-        print(str(w) + " " + str(h))
+        self.textAlignCenter(im.size[0])
 
-        print(str(int(ceil((w / 8.0) % 256.0))) + '| ' + str(int(floor((w / 8.0) / 256.0))) + '|' + str(
-            int(ceil(h % 256.0))) + '|' + str(int(floor(h / 256.0))))
 
         self.ser.write(
             [0x1D, 0x76, 0x30, 0x00, int(ceil((w / 8.0) % 256.0)), int(floor((w / 8.0) / 256.0)), int(ceil(h % 256.0)),
